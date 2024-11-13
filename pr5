@@ -1,0 +1,157 @@
+// Крок 1: Створення типів товарів
+type BaseProduct = {
+    id: number;
+    name: string;
+    price: number;
+};
+//створення спецефічного типу електроніка
+type Electronics = BaseProduct & {
+    category: 'electronics';
+    brand: string;
+    warranty: number;
+};
+//створення спецефічного типу одежа
+type Clothing = BaseProduct & {
+    category: 'clothing';
+    size: string;
+    material: string;
+};
+//створення спецефічного типу книги
+type Book = BaseProduct & {
+    category: 'book';
+    author: string;
+    pages: number;
+};
+
+// Крок 2: Створення функцій для пошуку та фільтрації товарів
+const findProduct = <T extends BaseProduct>(products: T[], id: number): T | undefined => {
+    return products.find(product => product.id === id);
+};
+
+const filterByPrice = <T extends BaseProduct>(products: T[], maxPrice: number): T[] => {
+    return products.filter(product => product.price <= maxPrice);
+};
+
+// Крок 3: Створення кошика
+type CartItem<T> = {
+    product: T;
+    quantity: number;
+};
+
+const addToCart = <T extends BaseProduct>(
+    cart: CartItem<T>[],
+    product: T,
+    quantity: number
+): CartItem<T>[] => {
+    const existingItemIndex = cart.findIndex(item => item.product.id === product.id);
+    if (existingItemIndex !== -1) {
+        cart[existingItemIndex].quantity += quantity;
+    } else {
+        cart.push({ product, quantity });
+    }
+    return cart;
+};
+
+const calculateTotal = <T extends BaseProduct>(cart: CartItem<T>[]): number => {
+    return cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
+};
+
+// Крок 4: Використання функцій
+
+// Створення тестових даних
+const electronics: Electronics[] = [
+    {
+        id: 1,
+        name: "Телефон",
+        price: 10000,
+        category: 'electronics',
+        brand: "Samsung",
+        warranty: 24
+    },
+    {
+        id: 2,
+        name: "Ноутбук",
+        price: 30000,
+        category: 'electronics',
+        brand: "Apple",
+        warranty: 12
+    }
+];
+
+const clothing: Clothing[] = [
+    {
+        id: 3,
+        name: "Футболка",
+        price: 500,
+        category: 'clothing',
+        size: "M",
+        material: "Cotton"
+    },
+    {
+        id: 4,
+        name: "Джинси",
+        price: 1500,
+        category: 'clothing',
+        size: "L",
+        material: "Denim"
+    }
+];
+
+const books: Book[] = [
+    {
+        id: 5,
+        name: "JavaScript для початківців",
+        price: 300,
+        category: 'book',
+        author: "John Doe",
+        pages: 250
+    },
+    {
+        id: 6,
+        name: "Пригоди Шерлока Холмса",
+        price: 400,
+        category: 'book',
+        author: "Arthur Conan Doyle",
+        pages: 320
+    }
+];
+
+// Додавання товарів до кошика додавання всіх існуючих товарів у кошик
+let cart: CartItem<BaseProduct>[] = [];
+
+const phone = findProduct(electronics, 1);
+const laptop = findProduct(electronics, 2);
+const shirt = findProduct(clothing, 3);
+const jeans = findProduct(clothing, 4);
+const jsBook = findProduct(books, 5);
+const holmesBook = findProduct(books, 6);
+
+if (phone) cart = addToCart(cart, phone, 1);
+if (laptop) cart = addToCart(cart, laptop, 1);
+if (shirt) cart = addToCart(cart, shirt, 2);
+if (jeans) cart = addToCart(cart, jeans, 1);
+if (jsBook) cart = addToCart(cart, jsBook, 3);
+if (holmesBook) cart = addToCart(cart, holmesBook, 1);
+
+// Вивід всього кошика 
+console.log("Кошик:");
+cart.forEach(item => {
+    console.log(`Назва: ${item.product.name}, Ціна: ${item.product.price}`);
+});
+
+// Вивід загальної вартості кошика
+const total = calculateTotal(cart);
+console.log("Загальна вартість кошика:", total);
+
+// Приклади фільтрації товарів за ціною до 600 та до 10000
+const affordableItemsUnder600 = filterByPrice([...electronics, ...clothing, ...books], 600);
+console.log("Товари до 600:");
+affordableItemsUnder600.forEach(item => {
+    console.log(`Назва: ${item.name}, Ціна: ${item.price}`);
+});
+
+const affordableItemsUnder1000 = filterByPrice([...electronics, ...clothing, ...books], 10000);
+console.log("Товари до 1000:");
+affordableItemsUnder1000.forEach(item => {
+    console.log(`Назва: ${item.name}, Ціна: ${item.price}`);
+});
