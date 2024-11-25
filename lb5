@@ -1,0 +1,158 @@
+// Базовий інтерфейс для контенту
+interface BaseContent {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+  publishedAt?: Date;
+  status: 'draft' | 'published' | 'archived';
+}
+
+// Типи контенту
+interface Article extends BaseContent {
+  title: string;
+  body: string;
+  tags: string[];
+  author: string;
+}
+
+// Тип для версіонування контенту
+type Versioned<T extends BaseContent> = T & {
+  version: number;
+  previousVersion?: T;
+};
+
+// Типи для валідації
+type ValidationResult = {
+  isValid: boolean;
+  errors?: string[];
+};
+
+type Validator<T> = {
+  validate: (data: T) => ValidationResult;
+};
+
+// Валідатор для статей
+const articleValidator: Validator<Article> = {
+  validate: (data) => {
+    const errors: string[] = [];
+    if (!data.title) errors.push("Title is required.");
+    if (!data.body) errors.push("Body is required.");
+    if (data.tags.length === 0) errors.push("At least one tag is required.");
+    return { isValid: errors.length === 0, errors };
+  },
+};
+
+// Мокові дані для тестування
+const mockArticles: Versioned<Article>[] = [
+  {
+    id: "1",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    publishedAt: new Date(),
+    status: "published",
+    title: "First Article",
+    body: "This is the body of the first article.",
+    tags: ["typescript", "content"],
+    author: "Author One",
+    version: 1,
+  },
+];
+
+// Generic для операцій з контентом
+type ContentOperations<T extends BaseContent> = {
+  create: (content: T) => ValidationResult & { content?: T };
+  read: (id: string) => T | null;
+  update: (id: string, updates: Partial<T>) => ValidationResult & { content?: T };
+  delete: (id: string) => boolean;
+  list: () => T[];
+};
+
+// Реалізація операцій з валідацією та версіонуванням
+const articleOperations: ContentOperations<Versioned<Article>> = {
+  create: (content) => {
+    const validation = articleValidator.validate(content);
+    if (!validation.isValid) {
+      return { ...validation };
+    }
+    const newArticle = {
+      ...content,
+      id: (Math.random() * 1000).toFixed(0), // Генеруємо ID
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      version: 1,
+    };
+    mockArticles.push(newArticle); // Додаємо статтю до масиву
+    return { ...validation, content: newArticle };
+  },
+  read: (id) => mockArticles.find((article) => article.id === id) || null,
+  update: (id, updates) => {
+    const article = mockArticles.find((article) => article.id === id);
+    if (!article) return { isValid: false, errors: ["Article not found"] };
+
+    const updatedArticle = {
+      ...article,
+      ...updates,
+      updatedAt: new Date(),
+      version: article.version + 1,
+      previousVersion: { ...article }, // Зберігаємо попередню версію
+    };
+
+    const validation = articleValidator.validate(updatedArticle);
+    if (!validation.isValid) {
+      return { ...validation };
+    }
+
+    // Оновлюємо статтю в масиві
+    Object.assign(article, updatedArticle);
+    return { ...validation, content: article };
+  },
+  delete: (id) => {
+    const index = mockArticles.findIndex((article) => article.id === id);
+    if (index === -1) return false;
+    mockArticles.splice(index, 1);
+    return true;
+  },
+  list: () => mockArticles,
+};
+
+// Тестування
+const newArticle: Article = {
+  id: "",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  status: "draft",
+  title: "New Article",
+  body: "This is a new article.",
+  tags: ["example"],
+  author: "Author Two",
+};
+
+// Додати нову статтю
+const createdResult = articleOperations.create(newArticle);
+if (createdResult.isValid) {
+  console.log("Created Article:", createdResult.content);
+} else {
+  console.error("Validation Errors:", createdResult.errors);
+}
+
+// Прочитати статтю
+const readArticle = articleOperations.read(createdResult.content?.id || "");
+console.log("Read Article:", readArticle);
+
+// Оновити статтю
+const updatedResult = articleOperations.update(readArticle?.id || "", {
+  status: "published",
+  tags: ["typescript", "example"],
+});
+if (updatedResult.isValid) {
+  console.log("Updated Article:", updatedResult.content);
+} else {
+  console.error("Validation Errors:", updatedResult.errors);
+}
+
+// Видалити статтю
+const isDeleted = articleOperations.delete(readArticle?.id || "");
+console.log("Deleted:", isDeleted);
+
+// Список статей
+console.log("All Articles:", articleOperations.list());
